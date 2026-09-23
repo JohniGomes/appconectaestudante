@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
+import { useRequireAuth } from "@/lib/use-require-auth";
 import AppHeader from "@/components/AppHeader";
+import BottomNav from "@/components/BottomNav";
 
 type Aluno = {
   nome: string;
@@ -19,17 +19,10 @@ type Presenca = {
 };
 
 export default function DashboardPage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user, loading } = useRequireAuth();
   const [aluno, setAluno] = useState<Aluno | null>(null);
   const [presencas, setPresencas] = useState<Presenca[]>([]);
   const [carregandoDados, setCarregandoDados] = useState(true);
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-    }
-  }, [loading, user, router]);
 
   useEffect(() => {
     if (!user) return;
@@ -142,7 +135,20 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
+
+        <div className="flex flex-col gap-2 pt-2">
+          <Link href="/historico" className="text-xs font-semibold text-[#1B6FC9] text-center">
+            Ver histórico completo →
+          </Link>
+          <Link
+            href="/secretaria"
+            className="text-xs font-semibold text-[#8C9AB8] text-center"
+          >
+            Visão da secretaria (demo) →
+          </Link>
+        </div>
       </div>
+      <BottomNav />
     </main>
   );
 }

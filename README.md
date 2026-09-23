@@ -16,9 +16,17 @@ Stack: **Next.js 16** (App Router) + **Supabase** (Auth, Postgres, Storage) +
 
 ### 1. Banco de dados
 
-No painel do seu projeto Supabase, abra **SQL Editor** e rode o conteúdo de
-[`supabase/schema.sql`](./supabase/schema.sql). Isso cria as tabelas `alunos`
-e `presencas`, com Row Level Security (cada aluno só vê os próprios dados).
+No painel do seu projeto Supabase, abra **SQL Editor** e rode, **nesta ordem**:
+
+1. [`supabase/schema.sql`](./supabase/schema.sql) — cria `alunos` e `presencas`.
+2. [`supabase/schema_v2.sql`](./supabase/schema_v2.sql) — adiciona `notas`,
+   `comunicados`, colunas de consentimento e as políticas de leitura ampla
+   usadas pelas telas de "visão da secretaria" (demo).
+
+Também desative a confirmação por e-mail em **Authentication → Sign In /
+Providers → User Signups → "Confirm email"** (o serviço de e-mail gratuito do
+Supabase tem um limite baixo de envios, e não faz sentido pedir confirmação
+num protótipo de demonstração).
 
 ### 2. Storage (fotos de presença)
 
@@ -54,15 +62,30 @@ Abra http://localhost:3000 — funciona em qualquer navegador com câmera
 3. Deploy. A cada push na branch `main`, a Vercel gera um novo deploy
    automaticamente.
 
-## Fluxo do app
+## Fluxo do app — 15 telas
 
-1. **`/signup`** — cria conta (Supabase Auth) e o perfil do aluno (`alunos`).
-2. **`/login`** — autentica.
-3. **`/dashboard`** — mostra status de presença do dia e histórico recente.
-4. **`/presenca`** — abre a câmera, detecta o rosto (face-api.js,
-   modelo *tiny face detector* rodando no navegador) e, após ~1,2s de
-   detecção contínua, captura a foto, sobe para o Storage e grava a
-   presença no banco.
+**App do aluno** (autenticado):
+
+1. `/` — landing
+2. `/signup` — criar conta
+3. `/login` — entrar
+4. `/dashboard` — status do dia + histórico recente
+5. `/presenca` — câmera com detecção facial + registro de presença
+6. `/notas` — boletim (lido do banco, alimentado pela secretaria)
+7. `/comunicados` — avisos da escola
+8. `/rota` — status do ônibus (dados simulados para a demo)
+9. `/perfil` — dados pessoais, toggles de consentimento LGPD, logout
+10. `/historico` — histórico completo de presenças
+
+**Visão da secretaria** (demo — mesma sessão do aluno, sem papel
+administrativo separado; é o próximo passo natural para uma versão com
+múltiplos perfis de acesso):
+
+11. `/secretaria` — dashboard com KPIs e check-ins do dia
+12. `/secretaria/alunos` — lista de todos os alunos matriculados
+13. `/secretaria/notas` — lançar nota para um aluno
+14. `/secretaria/comunicados` — publicar um aviso
+15. `/secretaria/evasao` — alunos sem presença há 7+ dias
 
 ## Estrutura
 

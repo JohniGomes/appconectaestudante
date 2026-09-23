@@ -3,12 +3,62 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+function IconGrid({ color }: { color: string }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  );
+}
+
+function IconUsers({ color }: { color: string }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M2.5 20c0-3.3 3-5.5 6.5-5.5s6.5 2.2 6.5 5.5" />
+      <path d="M16 8.2a3 3 0 110 5.9" />
+      <path d="M18.5 14.8c2.4.4 3.8 2 3.8 4.2" />
+    </svg>
+  );
+}
+
+function IconAlert({ color }: { color: string }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+      <path d="M12 9v4M12 17h.01" />
+      <path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" />
+    </svg>
+  );
+}
+
+function IconEdit({ color }: { color: string }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z" />
+    </svg>
+  );
+}
+
+function IconMegaphone({ color }: { color: string }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+      <path d="M3 11v2a2 2 0 002 2h1l3 5V4l-3 5H5a2 2 0 00-2 2z" />
+      <path d="M13 8a4 4 0 010 8" />
+      <path d="M17 5a8 8 0 010 14" />
+    </svg>
+  );
+}
+
 const ITEMS = [
-  { href: "/secretaria", label: "Dashboard" },
-  { href: "/secretaria/alunos", label: "Alunos" },
-  { href: "/secretaria/evasao", label: "Evasão" },
-  { href: "/secretaria/notas", label: "Lançar notas" },
-  { href: "/secretaria/comunicados", label: "Comunicados" },
+  { href: "/secretaria", label: "Dashboard", Icon: IconGrid },
+  { href: "/secretaria/alunos", label: "Alunos", Icon: IconUsers },
+  { href: "/secretaria/evasao", label: "Evasão", Icon: IconAlert },
+  { href: "/secretaria/notas", label: "Lançar notas", Icon: IconEdit },
+  { href: "/secretaria/comunicados", label: "Comunicados", Icon: IconMegaphone },
 ];
 
 export default function SecretariaShell({
@@ -43,17 +93,18 @@ export default function SecretariaShell({
       </div>
 
       <div className="max-w-3xl mx-auto w-full px-5 pt-4 flex gap-2 flex-wrap">
-        {ITEMS.map((item) => {
-          const active = pathname === item.href;
+        {ITEMS.map(({ href, label, Icon }) => {
+          const active = pathname === href;
           return (
             <Link
-              key={item.href}
-              href={item.href}
-              className={`text-xs font-bold px-3 py-1.5 rounded-full ${
+              key={href}
+              href={href}
+              className={`text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 ${
                 active ? "bg-[#14213D] text-white" : "bg-white border border-[#E1E7F2] text-[#6B7A99]"
               }`}
             >
-              {item.label}
+              <Icon color={active ? "#fff" : "#6B7A99"} />
+              {label}
             </Link>
           );
         })}

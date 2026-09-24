@@ -70,36 +70,56 @@ export default function PaiPage() {
   useEffect(() => {
     if (!user) return;
     const supabase = createClient();
+    let cancelado = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    const channel = supabase
-      .channel("presencas-pai")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "presencas" },
-        (payload) => {
-          const nova = payload.new as Presenca;
-          const filho = filhosRef.current.find((f) => f.id === nova.aluno_id);
-          if (!filho) return;
+    async function assinar() {
+      // Garante que o WebSocket do Realtime já tem o token do responsável
+      // antes de assinar o canal — sem isso, a política de segurança do
+      // banco descarta os eventos silenciosamente (conexão fica "anônima").
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        await supabase.realtime.setAuth(data.session.access_token);
+      }
+      if (cancelado) return;
 
-          setPresencas((prev) => [nova, ...prev]);
+      channel = supabase
+        .channel("presencas-pai")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "presencas" },
+          (payload) => {
+            const nova = payload.new as Presenca;
+            const filho = filhosRef.current.find((f) => f.id === nova.aluno_id);
+            if (!filho) return;
 
-          const hora = new Date(nova.registrado_em).toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-          const texto = `${filho.nome} fez check-in na escola às ${hora}`;
-          setToast(texto);
-          setTimeout(() => setToast(null), 6000);
+            setPresencas((prev) => [nova, ...prev]);
 
-          if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-            new Notification("Conecta Estudante", { body: texto });
+            const hora = new Date(nova.registrado_em).toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+            const texto = `${filho.nome} fez check-in na escola às ${hora}`;
+            setToast(texto);
+            setTimeout(() => setToast(null), 6000);
+
+            if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+              new Notification("Conecta Estudante", { body: texto });
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            console.log("Realtime conectado — ouvindo novos check-ins.");
+          }
+        });
+    }
+
+    assinar();
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelado = true;
+      if (channel) supabase.removeChannel(channel);
     };
   }, [user]);
 

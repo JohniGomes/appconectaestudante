@@ -21,20 +21,9 @@ export default function SignupResponsavelPage() {
 
     const supabase = createClient();
 
-    // 1. Encontra o aluno pela matrícula
-    const { data: aluno, error: alunoError } = await supabase
-      .from("alunos")
-      .select("id, nome")
-      .eq("matricula", matricula.trim())
-      .maybeSingle();
-
-    if (alunoError || !aluno) {
-      setErro("Não encontramos nenhum aluno com essa matrícula. Confira o número e tente de novo.");
-      setCarregando(false);
-      return;
-    }
-
-    // 2. Cria a conta do responsável
+    // 1. Cria a conta do responsável primeiro — a busca por matrícula abaixo
+    // só é permitida para usuários autenticados (política de segurança do
+    // banco), então a sessão precisa existir antes da consulta.
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password: senha,
@@ -49,6 +38,27 @@ export default function SignupResponsavelPage() {
     const responsavelId = signUpData.user?.id;
     if (!responsavelId) {
       setErro("Não foi possível criar a conta. Tente novamente.");
+      setCarregando(false);
+      return;
+    }
+
+    if (!signUpData.session) {
+      setErro("Conta criada! Verifique seu e-mail para confirmar o acesso e depois faça login para vincular o aluno.");
+      setCarregando(false);
+      return;
+    }
+
+    // 2. Encontra o aluno pela matrícula (agora autenticado)
+    const { data: aluno, error: alunoError } = await supabase
+      .from("alunos")
+      .select("id, nome")
+      .eq("matricula", matricula.trim())
+      .maybeSingle();
+
+    if (alunoError || !aluno) {
+      setErro(
+        "Conta criada, mas não encontramos nenhum aluno com essa matrícula. Faça login e tente vincular de novo em \"Vincular outro filho(a)\"."
+      );
       setCarregando(false);
       return;
     }
@@ -75,11 +85,7 @@ export default function SignupResponsavelPage() {
       return;
     }
 
-    if (signUpData.session) {
-      router.replace("/pai");
-    } else {
-      setErro("Conta criada! Verifique seu e-mail para confirmar o acesso e depois faça login.");
-    }
+    router.replace("/pai");
     setCarregando(false);
   }
 

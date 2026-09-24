@@ -4,15 +4,24 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { createClient } from "@/lib/supabase/client";
 
 export default function Home() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user) {
-      router.replace("/dashboard");
-    }
+    if (loading || !user) return;
+
+    const supabase = createClient();
+    supabase
+      .from("responsaveis")
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        router.replace(data ? "/pai" : "/dashboard");
+      });
   }, [loading, user, router]);
 
   return (
@@ -43,6 +52,12 @@ export default function Home() {
             className="w-full rounded-xl bg-white border border-[#E1E7F2] text-[#14213D] font-bold text-sm py-3 text-center"
           >
             Criar conta de aluno
+          </Link>
+          <Link
+            href="/signup-responsavel"
+            className="w-full rounded-xl bg-white border border-[#E1E7F2] text-[#14213D] font-bold text-sm py-3 text-center"
+          >
+            Criar conta de responsável
           </Link>
         </div>
       </div>

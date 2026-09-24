@@ -22,6 +22,10 @@ No painel do seu projeto Supabase, abra **SQL Editor** e rode, **nesta ordem**:
 2. [`supabase/schema_v2.sql`](./supabase/schema_v2.sql) — adiciona `notas`,
    `comunicados`, colunas de consentimento e as políticas de leitura ampla
    usadas pelas telas de "visão da secretaria" (demo).
+3. [`supabase/schema_v3.sql`](./supabase/schema_v3.sql) — adiciona
+   `responsaveis` e o vínculo `aluno_responsavel`, e habilita o Supabase
+   Realtime na tabela `presencas` (necessário para a notificação em tempo
+   real no app do responsável).
 
 Também desative a confirmação por e-mail em **Authentication → Sign In /
 Providers → User Signups → "Confirm email"** (o serviço de e-mail gratuito do
@@ -86,6 +90,19 @@ múltiplos perfis de acesso):
 13. `/secretaria/notas` — lançar nota para um aluno
 14. `/secretaria/comunicados` — publicar um aviso
 15. `/secretaria/evasao` — alunos sem presença há 7+ dias
+
+**App do responsável (pai/mãe)** — conta separada, vinculada ao aluno pela
+matrícula:
+
+16. `/signup-responsavel` — criar conta e vincular ao filho(a)
+17. `/pai` — lista dos filhos vinculados, status do dia, e um feed de
+    check-ins em tempo real (Supabase Realtime): assim que o aluno bate
+    presença, o responsável vê aparecer na hora, sem precisar recarregar a
+    página. Tem também um botão para ativar notificações do navegador
+    (usa a Notification API — funciona com o app aberto ou minimizado em
+    segundo plano; para notificação com o app totalmente fechado, o
+    próximo passo é implementar Web Push com service worker).
+18. `/pai/vincular` — vincular outro filho(a) usando a matrícula dele(a)
 
 ## Estrutura
 

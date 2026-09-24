@@ -18,12 +18,26 @@ export default function LoginPage() {
     setCarregando(true);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
 
     if (error) {
       setErro(error.message);
       setCarregando(false);
       return;
+    }
+
+    const userId = data.user?.id;
+    if (userId) {
+      const { data: responsavel } = await supabase
+        .from("responsaveis")
+        .select("id")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (responsavel) {
+        router.replace("/pai");
+        return;
+      }
     }
 
     router.replace("/dashboard");
@@ -78,6 +92,12 @@ export default function LoginPage() {
           Ainda não tem conta?{" "}
           <Link href="/signup" className="text-[#1B6FC9] font-semibold">
             Criar conta de aluno
+          </Link>
+        </p>
+        <p className="text-xs text-center text-[#8C9AB8]">
+          É responsável por um aluno?{" "}
+          <Link href="/signup-responsavel" className="text-[#1B6FC9] font-semibold">
+            Criar conta de responsável
           </Link>
         </p>
       </form>

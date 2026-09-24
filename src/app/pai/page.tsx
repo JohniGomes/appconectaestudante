@@ -20,6 +20,7 @@ export default function PaiPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [notifOn, setNotifOn] = useState(false);
   const filhosRef = useRef<Aluno[]>([]);
+  const idsConhecidosRef = useRef<Set<string> | null>(null);
 
   useEffect(() => {
     filhosRef.current = filhos;
@@ -60,66 +61,73 @@ export default function PaiPage() {
 
       setFilhos(alunosData ?? []);
       setPresencas(presencasData ?? []);
+      // Marca os check-ins já existentes como "conhecidos" para o polling
+      // não disparar notificação retroativa deles no primeiro ciclo.
+      idsConhecidosRef.current = new Set((presencasData ?? []).map((p) => p.id));
       setCarregando(false);
     }
 
     carregar();
   }, [user]);
 
-  // Assinatura em tempo real: novo check-in de qualquer filho vinculado
+  // Verifica novos check-ins a cada poucos segundos (polling via HTTP comum).
+  // Trocamos o Supabase Realtime (WebSocket) por isso porque, no momento,
+  // a própria Supabase está com um incidente de infraestrutura afetando
+  // conexões realtime autenticadas — o polling não depende disso, só de
+  // consultas REST normais, que continuam funcionando o tempo todo.
   useEffect(() => {
     if (!user) return;
     const supabase = createClient();
     let cancelado = false;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    async function assinar() {
-      // Garante que o WebSocket do Realtime já tem o token do responsável
-      // antes de assinar o canal — sem isso, a política de segurança do
-      // banco descarta os eventos silenciosamente (conexão fica "anônima").
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        await supabase.realtime.setAuth(data.session.access_token);
-      }
-      if (cancelado) return;
+    async function verificarNovos() {
+      const alunoIds = filhosRef.current.map((f) => f.id);
+      if (alunoIds.length === 0 || idsConhecidosRef.current === null) return;
 
-      channel = supabase
-        .channel("presencas-pai")
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "presencas" },
-          (payload) => {
-            const nova = payload.new as Presenca;
-            const filho = filhosRef.current.find((f) => f.id === nova.aluno_id);
-            if (!filho) return;
+      const { data } = await supabase
+        .from("presencas")
+        .select("id, aluno_id, registrado_em")
+        .in("aluno_id", alunoIds)
+        .order("registrado_em", { ascending: false })
+        .limit(10);
 
-            setPresencas((prev) => [nova, ...prev]);
+      if (cancelado || !data) return;
 
-            const hora = new Date(nova.registrado_em).toLocaleTimeString("pt-BR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            const texto = `${filho.nome} fez check-in na escola às ${hora}`;
-            setToast(texto);
-            setTimeout(() => setToast(null), 6000);
+      const novos = data.filter((p) => !idsConhecidosRef.current!.has(p.id));
+      if (novos.length === 0) return;
 
-            if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-              new Notification("Conecta Estudante", { body: texto });
-            }
-          }
-        )
-        .subscribe((status) => {
-          if (status === "SUBSCRIBED") {
-            console.log("Realtime conectado — ouvindo novos check-ins.");
-          }
+      novos.forEach((p) => idsConhecidosRef.current!.add(p.id));
+      // Mostra do mais antigo pro mais novo, assim o toast final é o mais recente
+      novos.reverse();
+
+      setPresencas((prev) => {
+        const existentes = new Set(prev.map((p) => p.id));
+        const aAdicionar = novos.filter((n) => !existentes.has(n.id));
+        return [...aAdicionar, ...prev];
+      });
+
+      novos.forEach((nova) => {
+        const filho = filhosRef.current.find((f) => f.id === nova.aluno_id);
+        if (!filho) return;
+
+        const hora = new Date(nova.registrado_em).toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
         });
+        const texto = `${filho.nome} fez check-in na escola às ${hora}`;
+        setToast(texto);
+        setTimeout(() => setToast(null), 6000);
+
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+          new Notification("Conecta Estudante", { body: texto });
+        }
+      });
     }
 
-    assinar();
-
+    const intervalo = setInterval(verificarNovos, 5000);
     return () => {
       cancelado = true;
-      if (channel) supabase.removeChannel(channel);
+      clearInterval(intervalo);
     };
   }, [user]);
 
